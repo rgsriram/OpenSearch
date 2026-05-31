@@ -90,9 +90,16 @@ import org.opensearch.core.common.unit.ByteSizeValue;
  * <li><code>index.merge.policy.segments_per_tier</code>:
  *
  *     Sets the allowed number of segments per tier. Smaller values mean more
- *     merging but fewer segments. Default is <code>10</code>. Note, this value needs to be
- *     &gt;= than the <code>max_merge_at_once</code> otherwise you'll force too many merges to
- *     occur.
+ *     merging but fewer segments. Default is <code>8</code> (aligned with Lucene 10.3+).
+ *     Note, this value needs to be &gt;= than the <code>max_merge_at_once</code> otherwise
+ *     you'll force too many merges to occur.
+ *
+ * <li><code>index.merge.policy.target_search_concurrency</code>:
+ *
+ *     Sets the target number of concurrent threads that will be used to search the index.
+ *     The merge policy will reserve segments on the top tier so that the index has at least
+ *     this many segments at all times, enabling the configured number of threads to search
+ *     in parallel without contention. Default is <code>1</code>.
  *
  * <li><code>index.merge.policy.deletes_pct_allowed</code>:
  *
@@ -148,7 +155,14 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
     public static final int DEFAULT_MAX_MERGE_AT_ONCE = 30;
 
     public static final ByteSizeValue DEFAULT_MAX_MERGED_SEGMENT = new ByteSizeValue(5, ByteSizeUnit.GB);
-    public static final double DEFAULT_SEGMENTS_PER_TIER = 10.0d;
+
+    /**
+     * Aligned with Lucene 10.3+ which reduced the default from 10 to 8.
+     * Fewer segments per tier means slightly faster search and slightly more merge work.
+     * See <a href="https://github.com/apache/lucene/issues/13811">lucene#13811</a>.
+     */
+    public static final double DEFAULT_SEGMENTS_PER_TIER = 8.0d;
+    public static final int DEFAULT_TARGET_SEARCH_CONCURRENCY = 1;
     public static final double DEFAULT_RECLAIM_DELETES_WEIGHT = 2.0d;
     public static final double DEFAULT_DELETES_PCT_ALLOWED = 20.0d;
 
@@ -209,6 +223,13 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
         Property.Dynamic,
         Property.IndexScope
     );
+    public static final Setting<Integer> INDEX_MERGE_POLICY_TARGET_SEARCH_CONCURRENCY_SETTING = Setting.intSetting(
+        "index.merge.policy.target_search_concurrency",
+        DEFAULT_TARGET_SEARCH_CONCURRENCY,
+        1,
+        Property.Dynamic,
+        Property.IndexScope
+    );
 
     TieredMergePolicyProvider(Logger logger, IndexSettings indexSettings) {
         this.logger = logger;
@@ -221,6 +242,7 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
         double segmentsPerTier = indexSettings.getValue(INDEX_MERGE_POLICY_SEGMENTS_PER_TIER_SETTING);
         double reclaimDeletesWeight = indexSettings.getValue(INDEX_MERGE_POLICY_RECLAIM_DELETES_WEIGHT_SETTING);
         double deletesPctAllowed = indexSettings.getValue(INDEX_MERGE_POLICY_DELETES_PCT_ALLOWED_SETTING);
+        int targetSearchConcurrency = indexSettings.getValue(INDEX_MERGE_POLICY_TARGET_SEARCH_CONCURRENCY_SETTING);
         this.mergesEnabled = indexSettings.getSettings().getAsBoolean(INDEX_MERGE_ENABLED, true);
         if (mergesEnabled == false) {
             logger.warn(
@@ -236,6 +258,7 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
         tieredMergePolicy.setMaxMergedSegmentMB(maxMergedSegment.getMbFrac());
         tieredMergePolicy.setSegmentsPerTier(segmentsPerTier);
         tieredMergePolicy.setDeletesPctAllowed(deletesPctAllowed);
+        tieredMergePolicy.setTargetSearchConcurrency(targetSearchConcurrency);
     }
 
     void setSegmentsPerTier(Double segmentsPerTier) {
@@ -281,6 +304,10 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
         tieredMergePolicy.setDeletesPctAllowed(deletesPctAllowed);
     }
 
+    void setTargetSearchConcurrency(Integer targetSearchConcurrency) {
+        tieredMergePolicy.setTargetSearchConcurrency(targetSearchConcurrency);
+    }
+
     public MergePolicy getMergePolicy() {
         return mergesEnabled ? tieredMergePolicy : NoMergePolicy.INSTANCE;
     }
@@ -322,6 +349,8 @@ public final class TieredMergePolicyProvider implements MergePolicyProvider {
             + tieredMergePolicy.getSegmentsPerTier()
             + ", deletesPctAllowed="
             + tieredMergePolicy.getDeletesPctAllowed()
+            + ", targetSearchConcurrency="
+            + tieredMergePolicy.getTargetSearchConcurrency()
             + '}';
     }
 

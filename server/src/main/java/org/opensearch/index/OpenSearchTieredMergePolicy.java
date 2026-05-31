@@ -127,4 +127,13 @@ final class OpenSearchTieredMergePolicy extends FilterMergePolicy {
     public double getDeletesPctAllowed() {
         return regularMergePolicy.getDeletesPctAllowed();
     }
+
+    public void setTargetSearchConcurrency(int targetSearchConcurrency) {
+        regularMergePolicy.setTargetSearchConcurrency(targetSearchConcurrency);
+        forcedMergePolicy.setTargetSearchConcurrency(targetSearchConcurrency);
+    }
+
+    public int getTargetSearchConcurrency() {
+        return regularMergePolicy.getTargetSearchConcurrency();
+    }
 }

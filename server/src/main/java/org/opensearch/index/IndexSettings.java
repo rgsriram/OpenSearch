@@ -1289,6 +1289,10 @@ public final class IndexSettings {
             TieredMergePolicyProvider.INDEX_MERGE_POLICY_SEGMENTS_PER_TIER_SETTING,
             tieredMergePolicyProvider::setSegmentsPerTier
         );
+        scopedSettings.addSettingsUpdateConsumer(
+            TieredMergePolicyProvider.INDEX_MERGE_POLICY_TARGET_SEARCH_CONCURRENCY_SETTING,
+            tieredMergePolicyProvider::setTargetSearchConcurrency
+        );
 
         scopedSettings.addSettingsUpdateConsumer(
             LogByteSizeMergePolicyProvider.INDEX_LBS_MERGE_POLICY_MERGE_FACTOR_SETTING,
