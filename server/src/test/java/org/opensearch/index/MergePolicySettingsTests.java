@@ -378,6 +378,26 @@ public class MergePolicySettingsTests extends OpenSearchTestCase {
         );
         assertEquals(((OpenSearchTieredMergePolicy) indexSettings.getMergePolicy(false)).getDeletesPctAllowed(), 22, 0);
 
+        assertEquals(
+            ((OpenSearchTieredMergePolicy) indexSettings.getMergePolicy(false)).getTargetSearchConcurrency(),
+            TieredMergePolicyProvider.DEFAULT_TARGET_SEARCH_CONCURRENCY
+        );
+        indexSettings.updateIndexMetadata(
+            newIndexMeta(
+                "index",
+                Settings.builder()
+                    .put(
+                        TieredMergePolicyProvider.INDEX_MERGE_POLICY_TARGET_SEARCH_CONCURRENCY_SETTING.getKey(),
+                        TieredMergePolicyProvider.DEFAULT_TARGET_SEARCH_CONCURRENCY + 3
+                    )
+                    .build()
+            )
+        );
+        assertEquals(
+            ((OpenSearchTieredMergePolicy) indexSettings.getMergePolicy(false)).getTargetSearchConcurrency(),
+            TieredMergePolicyProvider.DEFAULT_TARGET_SEARCH_CONCURRENCY + 3
+        );
+
         IllegalArgumentException exc = expectThrows(
             IllegalArgumentException.class,
             () -> indexSettings.updateIndexMetadata(
@@ -418,6 +438,10 @@ public class MergePolicySettingsTests extends OpenSearchTestCase {
             ((OpenSearchTieredMergePolicy) indexSettings.getMergePolicy(false)).getDeletesPctAllowed(),
             TieredMergePolicyProvider.DEFAULT_DELETES_PCT_ALLOWED,
             0
+        );
+        assertEquals(
+            ((OpenSearchTieredMergePolicy) indexSettings.getMergePolicy(false)).getTargetSearchConcurrency(),
+            TieredMergePolicyProvider.DEFAULT_TARGET_SEARCH_CONCURRENCY
         );
     }
 

@@ -90,6 +90,13 @@ public class OpenSearchTieredMergePolicyTests extends OpenSearchTestCase {
         assertEquals(42, policy.regularMergePolicy.getDeletesPctAllowed(), 0);
     }
 
+    public void testSetTargetSearchConcurrency() {
+        OpenSearchTieredMergePolicy policy = new OpenSearchTieredMergePolicy();
+        policy.setTargetSearchConcurrency(4);
+        assertEquals(4, policy.regularMergePolicy.getTargetSearchConcurrency());
+        assertEquals(4, policy.forcedMergePolicy.getTargetSearchConcurrency());
+    }
+
     public void testFindDeleteMergesReturnsNullOnEmptySegmentInfos() throws IOException {
         MergePolicy.MergeSpecification mergeSpecification = new OpenSearchTieredMergePolicy().findForcedDeletesMerges(
             new SegmentInfos(Version.LATEST.major),
